@@ -1,0 +1,145 @@
+
+Warning fixes; sent upstream.  
+
+--- mod_wsgi-3.2/mod_wsgi.c.warnings
++++ mod_wsgi-3.2/mod_wsgi.c
+@@ -946,7 +946,6 @@ static const char *wsgi_process_group(re
+ static const char *wsgi_server_group(request_rec *r, const char *s)
+ {
+     const char *name = NULL;
+-    const char *value = NULL;
+ 
+     const char *h = NULL;
+     apr_port_t p = 0;
+@@ -1729,7 +1728,6 @@ static PyObject *Log_writelines(LogObjec
+     PyObject *sequence = NULL;
+     PyObject *iterator = NULL;
+     PyObject *item = NULL;
+-    const char *msg = NULL;
+ 
+     if (self->expired) {
+         PyErr_SetString(PyExc_RuntimeError, "log object has expired");
+@@ -3007,7 +3005,6 @@ static int Adapter_output(AdapterObject 
+                           int exception_when_aborted)
+ {
+     int i = 0;
+-    int n = 0;
+     apr_status_t rv;
+     request_rec *r;
+ 
+@@ -3307,6 +3304,8 @@ static int Adapter_output(AdapterObject 
+         apr_brigade_cleanup(self->bb);
+         Py_END_ALLOW_THREADS
+ #else
++        int n;
++
+         /*
+          * In Apache 1.3, the bucket brigade system doesn't exist,
+          * so have no choice but to use ap_rwrite()/ap_rflush().
+@@ -4021,7 +4020,6 @@ static PyObject *Adapter_file_wrapper(Ad
+ {
+     PyObject *filelike = NULL;
+     apr_size_t blksize = HUGE_STRING_LEN;
+-    PyObject *result = NULL;
+ 
+     if (!self->r) {
+         PyErr_SetString(PyExc_RuntimeError, "request object has expired");
+@@ -5627,9 +5625,6 @@ static void wsgi_python_version(void)
+ 
+ static apr_status_t wsgi_python_term()
+ {
+-    PyInterpreterState *interp = NULL;
+-    PyThreadState *tstate = NULL;
+-
+     PyObject *module = NULL;
+ 
+     ap_log_error(APLOG_MARK, WSGI_LOG_INFO(0), wsgi_server,
+@@ -6655,7 +6650,6 @@ static apr_status_t wsgi_python_child_cl
+ static void wsgi_python_child_init(apr_pool_t *p)
+ {
+     PyGILState_STATE state;
+-    PyInterpreterState *interp = NULL;
+     PyObject *object = NULL;
+ 
+     int thread_id = 0;
+@@ -6757,8 +6751,6 @@ static void wsgi_python_child_init(apr_p
+         entries = (WSGIScriptFile *)scripts->elts;
+ 
+         for (i = 0; i < scripts->nelts; ++i) {
+-            int l = 0;
+-
+             entry = &entries[i];
+ 
+             if (!strcmp(wsgi_daemon_group, entry->process_group)) {
+@@ -7408,7 +7400,6 @@ static const char *wsgi_set_callable_obj
+ static const char *wsgi_add_import_script(cmd_parms *cmd, void *mconfig,
+                                           const char *args)
+ {
+-    const char *error = NULL;
+     WSGIScriptFile *object = NULL;
+ 
+     const char *option = NULL;
+@@ -7819,6 +7810,7 @@ static const char *wsgi_set_auth_group_s
+     return NULL;
+ }
+ 
++#if !defined(MOD_WSGI_WITH_AUTHN_PROVIDER)
+ static const char *wsgi_set_user_authoritative(cmd_parms *cmd, void *mconfig,
+                                                const char *f)
+ {
+@@ -7834,6 +7826,7 @@ static const char *wsgi_set_user_authori
+ 
+     return NULL;
+ }
++#endif
+ 
+ static const char *wsgi_set_group_authoritative(cmd_parms *cmd, void *mconfig,
+                                                 const char *f)
+@@ -7855,8 +7848,6 @@ static const char *wsgi_set_group_author
+ static const char *wsgi_add_handler_script(cmd_parms *cmd, void *mconfig,
+                                            const char *args)
+ {
+-    WSGIServerConfig *sconfig = NULL;
+-    WSGIDirectoryConfig *dconfig = NULL;
+     WSGIScriptFile *object = NULL;
+ 
+     const char *name = NULL;
+@@ -10223,9 +10214,6 @@ static void wsgi_daemon_worker(apr_pool_
+     while (!wsgi_daemon_shutdown) {
+         apr_status_t rv;
+ 
+-        apr_time_t start;
+-        apr_time_t duration;
+-
+         /*
+          * Only allow one thread in this process to attempt to
+          * acquire the global process lock as the global process
+@@ -12417,11 +12405,6 @@ static int wsgi_hook_daemon_handler(conn
+     ap_filter_t *current = NULL;
+     ap_filter_t *next = NULL;
+ 
+-    const apr_array_header_t *head = NULL;
+-    const apr_table_entry_t *elts = NULL;
+-
+-    int i = 0;
+-
+     const char *item;
+ 
+     /* Don't do anything if not in daemon process. */
+@@ -14334,6 +14317,8 @@ static int wsgi_hook_access_checker(requ
+     return HTTP_FORBIDDEN;
+ }
+ 
++#if defined(MOD_WSGI_WITH_AAA_HANDLERS) \
++    && !defined(MOD_WSGI_WITH_AUTHN_PROVIDER)
+ static int wsgi_hook_check_user_id(request_rec *r)
+ {
+     WSGIRequestConfig *config;
+@@ -14566,6 +14551,7 @@ static int wsgi_hook_check_user_id(reque
+ 
+     return status;
+ }
++#endif
+ 
+ #if defined(MOD_WSGI_WITH_AUTHZ_PROVIDER)
+ 
